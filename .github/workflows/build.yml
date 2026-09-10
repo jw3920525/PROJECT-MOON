@@ -19,6 +19,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: 임시 폴더용 3 파일 자동 삭제
+        run: find android/app/src/main/res -name "3" -delete
+
       - name: build_android.sh 실행 권한 부여
         run: chmod +x build_android.sh
 
