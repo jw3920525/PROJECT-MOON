@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>단테 삐삐</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="단테 삐삐">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- CRT 스캔라인 & 비네팅 오버레이 -->
+  <div id="crt-overlay" class="crt-overlay"></div>
+  <div id="crt-vignette" class="crt-vignette"></div>
+
+  <!-- 메인 삐삐 인터페이스 전체 영역 (클릭/터치로 다음 단계 진행) -->
+  <div id="pager-app" class="pager-container" tabindex="0">
+    
+    <!-- 삐삐 외곽 네온 테두리 & 코너 장식 -->
+    <div class="terminal-frame">
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+    </div>
+
+    <!-- 상단 슬라이드 인앱 알람 배너 -->
+    <div id="alarm-banner" class="alarm-banner hidden">
+      <div class="alarm-banner-content">
+        <span class="alarm-badge">ALARM</span>
+        <div class="alarm-text-group">
+          <span id="alarm-time-text" class="alarm-time">09:00</span>
+          <span id="alarm-desc-text" class="alarm-desc">등록된 일정 알람</span>
+        </div>
+      </div>
+      <div class="alarm-banner-actions">
+        <button id="btn-alarm-jump" class="btn btn-sm btn-primary">확인</button>
+        <button id="btn-alarm-dismiss" class="btn btn-sm btn-secondary">닫기</button>
+      </div>
+    </div>
+
+    <!-- 초미니멀 상단 바 (설정 버튼만 우측 상단에 심플하게 배치) -->
+    <header class="pager-header">
+      <div class="header-left"></div>
+      <div class="header-right">
+        <button id="btn-open-settings" class="icon-btn" title="설정">SETTING</button>
+      </div>
+    </header>
+
+    <!-- 중앙 메인 삐삐 디스플레이 (거대한 픽셀 텍스트) -->
+    <main class="pager-screen">
+      <div class="screen-content">
+        <!-- 1. 상태 서브 라벨 / 비프음 진행 점 (Dots) -->
+        <div id="display-dots" class="dots-display"></div>
+        <div id="display-sub-label" class="sub-label"></div>
+
+        <!-- 2. 중앙 메인 텍스트 (암호문 / 복호화 텍스트 / _CLEAR._) -->
+        <div id="display-main" class="main-text">SPACE 를 눌러 시작</div>
+
+        <!-- 3. 일정 시간 정보 (예: 09:00 - 10:00) -->
+        <div id="display-time" class="time-badge"></div>
+
+        <!-- 4. 복호화 진행 바 -->
+        <div id="progress-container" class="progress-bar-container">
+          <div id="progress-fill" class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 초미니멀 하단 바 (우측 시계만 깔끔하게 표시) -->
+    <footer class="pager-footer">
+      <div class="footer-left"></div>
+      <div class="footer-right">
+        <span id="clock-display" class="clock-text">--:--:--</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- 환경 설정 모달 팝업 -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      
+      <!-- 모달 헤더 (순수 한글 타이틀) -->
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">
+            <span>환경 설정</span>
+          </div>
+        </div>
+        <button id="btn-close-settings" class="close-btn" title="닫기">&times;</button>
+      </div>
+
+      <!-- 세그먼트 탭 네비게이션 -->
+      <div class="modal-tabs">
+        <button class="tab-btn active" data-tab="tab-calendar">
+          <span>캘린더 연동</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-messages">
+          <span>메시지 관리</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-sound">
+          <span>화면 / 사운드 / 알람</span>
+        </button>
+      </div>
+
+      <!-- 모달 본문 영역 -->
+      <div class="modal-body">
+        
+        <!-- ── 탭 1: 캘린더 연동 (iCal 전용) ── -->
+        <div id="tab-calendar" class="tab-pane active">
+          
+          <!-- iCal 비공개 URL 연동 -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <span class="card-tag">Google 캘린더 iCal 연동</span>
+            </div>
+            <div class="input-with-btn">
+              <input type="text" id="input-ics-url" placeholder="Google 캘린더 iCal 비공개 주소 입력 (https://.../basic.ics)" autocomplete="off" spellcheck="false">
+              <button id="btn-sync-now" class="btn btn-primary">동기화</button>
+            </div>
+          </div>
+
+          <!-- 자동 동기화 주기 -->
+          <div class="option-row">
+            <div class="option-title">자동 동기화 주기</div>
+            <select id="select-auto-sync" class="cyber-select">
+              <option value="0">끄기</option>
+              <option value="5">5분</option>
+              <option value="10">10분</option>
+              <option value="30">30분</option>
+              <option value="60" selected>1시간</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- ── 탭 2: 메시지 관리 ── -->
+        <div id="tab-messages" class="tab-pane">
+
+          <!-- AI(Gemini) 지령 자동 생성 -->
+          <div class="section-card" id="gemini-section">
+            <div class="section-card-header">
+              <span class="card-tag">AI 지령 자동 생성 (Gemini)</span>
+            </div>
+            <div class="input-with-btn">
+              <input type="password" id="input-gemini-key" placeholder="Gemini API 키 입력" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="input-with-btn" style="margin-top: 8px;">
+              <input type="text" id="input-gemini-hint" placeholder="상황 힌트 (선택, 예: 야근 중 / 위기 대응)" autocomplete="off" spellcheck="false">
+              <button id="btn-gemini-generate" class="btn btn-primary">AI로 지령 생성</button>
+            </div>
+            <div class="option-row">
+              <div class="option-title">앱 실행 시 매일 자동 생성</div>
+              <label class="switch">
+                <input type="checkbox" id="toggle-gemini-auto">
+                <span class="slider-switch"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="messages-top-bar">
+            <div class="stage-control-group">
+              <span id="label-custom-stage-count" class="stage-count-badge">3 STAGES</span>
+              <button id="btn-add-stage" class="btn btn-sm btn-primary">+ 단계 추가</button>
+            </div>
+            <div class="sample-actions">
+              <button id="btn-load-sample" class="btn btn-sm btn-secondary">예시 불러오기</button>
+              <button id="btn-clear-messages" class="btn btn-sm btn-danger-outline">비우기</button>
+            </div>
+          </div>
+
+          <!-- 각 STAGE 카드 컨테이너 -->
+          <div id="stage-cards-container" class="stage-cards-scroll">
+            <!-- JS에서 렌더링 -->
+          </div>
+
+          <button id="btn-apply-custom-messages" class="btn btn-primary btn-block" style="margin-top: 10px;">
+            적용하기
+          </button>
+        </div>
+
+        <!-- ── 탭 3: 화면 및 사운드 설정 ── -->
+        <div id="tab-sound" class="tab-pane">
+          
+          <!-- 화면 설정 -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <span class="card-tag">화면 설정</span>
+            </div>
+
+            <!-- 화면 방향 -->
+            <div class="option-row">
+              <div class="option-title">화면 방향</div>
+              <select id="select-orientation" class="cyber-select">
+                <option value="landscape" selected>가로 모드 (기본)</option>
+                <option value="portrait">세로 모드</option>
+                <option value="sensor">자동 회전</option>
+              </select>
+            </div>
+
+            <!-- 복호화 속도 -->
+            <div class="option-row">
+              <div class="option-title">복호화 속도</div>
+              <select id="select-decode-speed" class="cyber-select">
+                <option value="fast">빠르게 (0.5초)</option>
+                <option value="normal" selected>보통 (0.9초)</option>
+                <option value="slow">느리게 (1.5초)</option>
+              </select>
+            </div>
+
+            <!-- CRT 스캔라인 -->
+            <div class="option-row">
+              <div class="option-title">CRT 스캔라인</div>
+              <label class="switch">
+                <input type="checkbox" id="toggle-scanlines" checked>
+                <span class="slider-switch"></span>
+              </label>
+            </div>
+
+            <!-- CRT 비네팅 -->
+            <div class="option-row">
+              <div class="option-title">CRT 비네팅</div>
+              <label class="switch">
+                <input type="checkbox" id="toggle-vignette" checked>
+                <span class="slider-switch"></span>
+              </label>
+            </div>
+
+          </div>
+
+          <!-- 테마 및 색상 커스텀 카드 -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <span class="card-tag">테마 및 컬러 커스텀</span>
+            </div>
+
+            <!-- 미니 실시간 미리보기 스크린 (CRT 스캔라인 & 비네팅 오버레이 포함) -->
+            <div id="theme-mini-preview" class="theme-mini-preview">
+              <div id="mini-crt-scanlines" class="mini-crt-scanlines"></div>
+              <div id="mini-crt-vignette" class="mini-crt-vignette"></div>
+              <div class="mini-screen-decor">
+                <span class="mini-decor-dot"></span>
+                <span class="mini-decor-label">LIVE PREVIEW</span>
+              </div>
+              <div class="mini-screen-body">
+                <div class="mini-preview-text" id="mini-preview-text">단테 삐삐 시뮬레이터</div>
+                <div class="mini-preview-time" id="mini-preview-time">09:00 - 10:00</div>
+              </div>
+            </div>
+
+            <!-- 글자 색상 선택 섹션 -->
+            <div class="color-setting-block">
+              <div class="color-block-header">
+                <span class="color-block-title">글자 색상</span>
+                <div class="color-hex-tag" id="tag-font-hex">#2FBFFC</div>
+              </div>
+              <div class="color-chips-row">
+                <button type="button" class="color-circle-chip active" data-type="font" data-color="#2fbffc" style="background:#2fbffc;" title="단테 블루 (기본)"></button>
+                <button type="button" class="color-circle-chip" data-type="font" data-color="#ff9d00" style="background:#ff9d00;" title="황금가지 앰버"></button>
+                <button type="button" class="color-circle-chip" data-type="font" data-color="#00e676" style="background:#00e676;" title="레트로 그린"></button>
+                <button type="button" class="color-circle-chip" data-type="font" data-color="#ff5252" style="background:#ff5252;" title="네온 레드"></button>
+                <button type="button" class="color-circle-chip" data-type="font" data-color="#d500f9" style="background:#d500f9;" title="바이올렛"></button>
+                <button type="button" class="color-circle-chip" data-type="font" data-color="#ffffff" style="background:#ffffff;" title="화이트"></button>
+                <button type="button" class="color-circle-chip picker-circle-trigger" id="btn-open-color-picker-font" data-type="font" title="직접 색상 선택 (팝업)">
+                  <span class="picker-plus-icon">+</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 배경 색상 선택 섹션 -->
+            <div class="color-setting-block" style="margin-top: 14px;">
+              <div class="color-block-header">
+                <span class="color-block-title">배경 색상</span>
+                <div class="color-hex-tag" id="tag-bg-hex">#000000</div>
+              </div>
+              <div class="color-chips-row">
+                <button type="button" class="color-circle-chip active" data-type="bg" data-color="#000000" style="background:#000000; border:1px solid #3a4a58;" title="딥 블랙 (기본)"></button>
+                <button type="button" class="color-circle-chip" data-type="bg" data-color="#050e18" style="background:#050e18; border:1px solid #3a4a58;" title="다크 네이비"></button>
+                <button type="button" class="color-circle-chip" data-type="bg" data-color="#0b0412" style="background:#0b0412; border:1px solid #3a4a58;" title="다크 퍼플"></button>
+                <button type="button" class="color-circle-chip" data-type="bg" data-color="#09140a" style="background:#09140a; border:1px solid #3a4a58;" title="다크 올리브"></button>
+                <button type="button" class="color-circle-chip" data-type="bg" data-color="#140508" style="background:#140508; border:1px solid #3a4a58;" title="다크 카민"></button>
+                <button type="button" class="color-circle-chip picker-circle-trigger" id="btn-open-color-picker-bg" data-type="bg" title="직접 색상 선택 (팝업)">
+                  <span class="picker-plus-icon">+</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 사운드 설정 -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <span class="card-tag">사운드 설정</span>
+            </div>
+            
+            <div class="form-group">
+              <div class="slider-header">
+                <span class="slider-title">볼륨</span>
+                <span id="label-volume" class="slider-val">80%</span>
+              </div>
+              <div class="input-with-btn">
+                <input type="range" id="slider-volume" min="0" max="100" value="80" class="cyber-slider">
+                <button id="btn-test-sound" class="btn btn-secondary">테스트</button>
+              </div>
+            </div>
+
+            <div class="option-row" style="margin-top: 10px;">
+              <div class="option-title">사운드 종류</div>
+              <select id="select-sound-type" class="cyber-select">
+                <option value="file" selected>비프 사운드</option>
+                <option value="synth">신디사이저 톤</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 일정 알람 설정 -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <span class="card-tag">일정 알람 설정</span>
+            </div>
+
+            <div class="option-row">
+              <div class="option-info">
+                <div class="option-title">등록 시간 알람 알림</div>
+                <div class="option-desc" style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                  일정에 등록된 시간(예: 09:00)이 되면 비프음과 함께 알람을 울립니다.
+                </div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="toggle-alarm" checked>
+                <span class="slider-switch"></span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 모달 푸터 액션 버튼 -->
+      <div class="modal-footer">
+        <button id="btn-reset-default" class="btn btn-danger-outline">초기화</button>
+        <div class="footer-right-btns">
+          <button id="btn-cancel-settings" class="btn btn-secondary">취소</button>
+          <button id="btn-save-settings" class="btn btn-primary">저장</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── 프리미엄 사이버펑크 색상 선택 팝업 다이얼로그 ── -->
+  <div id="custom-color-modal" class="modal-overlay hidden" style="z-index: 1200;">
+    <div class="cyber-color-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">
+            <span id="color-modal-title">🎨 사용자 지정 색상</span>
+          </div>
+        </div>
+        <button id="btn-close-color-modal" class="close-btn">&times;</button>
+      </div>
+
+      <div class="cyber-color-body">
+        <!-- 2D 채도/명도 캔버스 & HUE 레인보우 바 -->
+        <div class="picker-interactive-box">
+          <div id="picker-sv-box" class="picker-sv-box">
+            <div class="sv-white-layer"></div>
+            <div class="sv-black-layer"></div>
+            <div id="picker-sv-cursor" class="picker-sv-cursor"></div>
+          </div>
+          <div id="picker-hue-track" class="picker-hue-track">
+            <div id="picker-hue-thumb" class="picker-hue-thumb"></div>
+          </div>
+        </div>
+
+        <!-- 컬러 비교 박스 & HEX/RGB 세밀 입력창 -->
+        <div class="picker-values-row">
+          <div class="picker-swatch-compare">
+            <div class="swatch-label">NEW COLOR</div>
+            <div id="picker-live-swatch" class="picker-live-swatch"></div>
+          </div>
+          <div class="picker-inputs-column">
+            <div class="picker-hex-row">
+              <span class="picker-input-tag">HEX</span>
+              <input type="text" id="picker-hex-input" class="cyber-hex-field" value="#2FBFFC" maxlength="7" spellcheck="false">
+            </div>
+            <div class="picker-rgb-row">
+              <div class="rgb-col"><span class="rgb-tag">R</span><input type="number" id="picker-r-input" min="0" max="255" class="rgb-num-field" value="47"></div>
+              <div class="rgb-col"><span class="rgb-tag">G</span><input type="number" id="picker-g-input" min="0" max="255" class="rgb-num-field" value="191"></div>
+              <div class="rgb-col"><span class="rgb-tag">B</span><input type="number" id="picker-b-input" min="0" max="255" class="rgb-num-field" value="252"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 추천 사이버 네온 프리셋 그리드 -->
+        <div class="quick-preset-container">
+          <div class="quick-preset-title">QUICK CYBER PRESETS</div>
+          <div class="quick-preset-grid" id="quick-preset-grid">
+            <!-- JS 동적 생성 -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-cancel-color-modal" class="btn btn-secondary">취소</button>
+        <button id="btn-apply-color-modal" class="btn btn-primary">선택 완료</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림창 -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- 오디오 소스 -->
+  <audio id="beep-audio" src="assets/beep.wav" preload="auto"></audio>
+
+  <script src="app.js"></script>
+</body>
+</html>

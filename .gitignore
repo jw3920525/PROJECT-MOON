@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Local Configuration & Data
+config.json
+*.log
+
+# Android
+.gradle/
+**/build/
+android/local.properties
+android/.gradle/
+android/.kotlin/
+android/app/build/
+*.apk
+*.aab
+dist/*.apk
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
